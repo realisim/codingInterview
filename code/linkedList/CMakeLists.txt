@@ -1,0 +1,7 @@
+
+
+FILE (GLOB SOURCES *.h *.cpp)
+
+ADD_EXECUTABLE( LinkedList ${SOURCES} ${REUSABLE})
+
+INSTALL(TARGETS LinkedList DESTINATION ${CodingInterview_SOURCE_DIR}/bin)
