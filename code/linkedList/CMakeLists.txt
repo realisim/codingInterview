@@ -2,6 +2,8 @@
 
 FILE (GLOB SOURCES *.h *.cpp)
 
+#SOURCE_GROUP("Group Name" FILES ${FILES_TO_ADD})
+
 ADD_EXECUTABLE( LinkedList ${SOURCES} ${REUSABLE})
 
 INSTALL(TARGETS LinkedList DESTINATION ${CodingInterview_SOURCE_DIR}/bin)

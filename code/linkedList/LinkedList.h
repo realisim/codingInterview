@@ -1,3 +1,5 @@
+#ifndef CODINGINTERVIEW_DOUBLY_LINKED_LIST_HH
+#define CODINGINTERVIEW_DOUBLY_LINKED_LIST_HH
 
 #include <cstddef>
 #include <string>
@@ -38,5 +40,6 @@ namespace codingInterview
     int mCount;
   };
   
-  
 }
+
+#endif
