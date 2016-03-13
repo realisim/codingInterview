@@ -19,10 +19,13 @@ public:
   dynamicArray& operator=(const dynamicArray&);
   ~dynamicArray();
   
+  //enum growthMethod( gmExactSize, gmDoubleUp );
+  
   int capacity() const;
   void clear();
   int erase(int);
   int erase(int, int);
+//int find(const T&) const;
 //int insert(int, const T&);
   T& operator[](int);
   const T& operator[](int) const;
@@ -37,6 +40,7 @@ protected:
   void reduce();
   bool shouldReduce() const;
   
+  //TODO.. should use unsigned int here!!!
   T *mpData;
   int mLastInsertionIndex;
   int mCapacity;
@@ -166,10 +170,10 @@ protected:
   {
     T *newArray = new T[iNewSize];
     memcpy(newArray, mpData, sizeof(T) * size() );
-printf("expand from %d to %d, old mpdata 0x%08x, new mpdata 0x%08x, sizeof(T) %d, total copy size %d\n",
-       size(),
-       iNewSize,
-       mpData, newArray, sizeof(T), sizeof(T) * size());
+//printf("expand from %d to %d, old mpdata 0x%08x, new mpdata 0x%08x, sizeof(T) %d, total copy size %d\n",
+//       size(),
+//       iNewSize,
+//       mpData, newArray, sizeof(T), sizeof(T) * size());
     delete[] mpData;
     mpData = newArray;
     
