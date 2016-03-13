@@ -3,10 +3,26 @@
 
 #include <cassert>
 #include "dynamicArray.h"
+#include <string>
 
 namespace codingInterview
 {
+ 
+//-----------------------------------------------------
+//--- hashMap
+//-----------------------------------------------------
+template<typename KEY>
+class hash
+{
+public:
+  hash();
+  virtual ~hash() {;}
+  unsigned int operator()(const KEY&);
+};
   
+//-----------------------------------------------------
+//--- hashMap
+//-----------------------------------------------------
 template<typename KEY, typename VALUE>
 class hashMap
 {
@@ -27,10 +43,10 @@ public:
     unsigned int getArrayIndex() const;
     unsigned int getBucketIndex() const;
     bool isValid() const;
-    bool operator==(const iterator&);
-    bool operator!=(const iterator&);
-    bool operator>(const iterator&);
-    bool operator<(const iterator&);
+    bool operator==(const iterator&) const;
+    bool operator!=(const iterator&) const;
+    bool operator>(const iterator&) const;
+    bool operator<(const iterator&) const;
     iterator& operator++(); //pre-increment
     iterator& operator--(); //pre-decrement
     //iterator operator+(int);
@@ -38,11 +54,10 @@ public:
     
     const KEY& key() const;
     VALUE& value();
-//unsigned int hash() const;
+    unsigned int hash() const;
     
   protected:
     friend typename hashMap<KEY, VALUE>::iterator hashMap<KEY, VALUE>::createIterator(unsigned int, unsigned int) const;
-//    friend class hashMap<KEY, VALUE>;
     
     hashMap<KEY, VALUE>* mpHashMap;
     unsigned int mBucketIndex;
@@ -50,12 +65,14 @@ public:
   };
   
   iterator begin() const;
+//unsigned int count(const KEY&) const;
+  void clear();
   iterator end() const;
   int getNumberOfBuckets() const {return mNumberOfBuckets;}
 //pair<iterator, iterator> equalRange(const Key&) const;
   iterator find(const KEY&) const;
   void insert(const KEY&, const VALUE&);
-//unsigned int size() const;
+  unsigned int size() const;
   
 protected:
   friend class iterator;
@@ -72,15 +89,69 @@ protected:
   
   hashMap() {;} //no default constructor
   iterator createIterator(unsigned int, unsigned int) const;
-  unsigned int generateHash(const KEY&);
   dynamicArray<node>& operator[](int); //pour iterator;
   
   //--- data
   int mNumberOfBuckets;
+  unsigned int mSize;
   dynamicArray<node> *mpBuckets;
   iterator mBeginIt;
   iterator mEndIt;
 };
+  
+  //-----------------------------------------------------
+  //--- implementation hash - hasher
+  //-----------------------------------------------------
+  template<typename KEY>
+  hash<KEY>::hash() {}
+  
+  //-----------------------------------------------------
+  //general catch all hasher.
+  template<typename KEY>
+  unsigned int hash<KEY>::operator()(const KEY &iKey)
+  {
+    // settings taken from
+    // http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param
+    const unsigned int FNV_PRIME = 16777619;
+    const unsigned int FNV_OFFSET_BASIS = 2166136261;
+    
+    unsigned int hash = FNV_OFFSET_BASIS;
+    
+    const size_t numBytes = sizeof(iKey);
+    const char *bytes = reinterpret_cast<const char*>(&iKey);
+    
+    for(size_t i = 0; i < numBytes; i++)
+    {
+      hash ^= bytes[i];
+      hash *= FNV_PRIME;
+    }
+    
+    return hash;
+  }
+  
+  //-----------------------------------------------------
+  //string specialization (to handle \0 properly)
+  template<>
+  unsigned int hash<std::string>::operator()(const std::string &iKey)
+  {
+    // settings taken from
+    // http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param
+    const unsigned int FNV_PRIME = 16777619;
+    const unsigned int FNV_OFFSET_BASIS = 2166136261;
+    
+    unsigned int hash = FNV_OFFSET_BASIS;
+    
+    const char *bytes = reinterpret_cast<const char*>(&iKey);
+    std::string s(bytes);
+    
+    for(size_t i = 0; i < s.size(); i++)
+    {
+      hash ^= bytes[i];
+      hash *= FNV_PRIME;
+    }
+    
+    return hash;
+  }
   
   //------------------------------------------------------------------------------
   //--- Implementation hashMap
@@ -88,7 +159,8 @@ protected:
   template<typename KEY, typename VALUE>
   hashMap<KEY, VALUE>::hashMap(unsigned int iNumBuckets) :
     mNumberOfBuckets(iNumBuckets),
-    mpBuckets(0)
+    mSize(0),
+    mpBuckets(nullptr)
   {
     mpBuckets = new dynamicArray<node>[mNumberOfBuckets];
     mBeginIt = createIterator(-1, -1);
@@ -108,6 +180,19 @@ protected:
   
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
+  void
+  hashMap<KEY, VALUE>::clear()
+  {
+    if( mpBuckets != nullptr )
+    { delete[] mpBuckets; }
+    mpBuckets = new dynamicArray<node>[mNumberOfBuckets];
+    mBeginIt = createIterator(-1, -1);
+    mEndIt = mBeginIt;
+    mSize = 0;
+  }
+  
+  //------------------------------------------------------------------------------
+  template<typename KEY, typename VALUE>
   typename hashMap<KEY, VALUE>::iterator
   hashMap<KEY, VALUE>::createIterator(unsigned int iBucketIndex, unsigned int iArrayIndex) const
   {
@@ -123,28 +208,32 @@ protected:
   typename hashMap<KEY, VALUE>::iterator
   hashMap<KEY, VALUE>::end() const
   { return mEndIt; }
-  
+    
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
-  unsigned int
-  hashMap<KEY, VALUE>::generateHash(const KEY &iKey)
+  typename hashMap<KEY, VALUE>::iterator
+  hashMap<KEY, VALUE>::find(const KEY& iKey) const
   {
-    // settings taken from
-    // http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param
-    const unsigned int FNV_PRIME = 16777619;
-    const unsigned int FNV_OFFSET_BASIS = 2166136261;
+    iterator it = end();
     
-    unsigned int hash = FNV_OFFSET_BASIS;
+    codingInterview::hash<KEY> hasher;
+    const unsigned int hash = hasher(iKey);
+    const unsigned int bucketIndex = hash % getNumberOfBuckets();
     
-    const size_t numBytes = sizeof(iKey);
-    const char *bytes = reinterpret_cast<const char*>(&iKey);
+    const dynamicArray<node>& bucket = mpBuckets[bucketIndex];
+    const int bucketSize = bucket.size();
     
-    for(size_t i = 0; i < numBytes; i++) {
-      hash ^= bytes[i];
-      hash *= FNV_PRIME;
+    bool found = false;
+    for(int i = 0; i < bucketSize && !found; ++i)
+    {
+      if( bucket[i].mKey == iKey )
+      {
+        it = createIterator(bucketIndex, i);
+        found = true;
+      }
     }
     
-    return hash;
+    return it;
   }
   
   //------------------------------------------------------------------------------
@@ -152,9 +241,11 @@ protected:
   void
   hashMap<KEY, VALUE>::insert(const KEY& iKey, const VALUE& iValue)
   {
-    unsigned int h = generateHash(iKey);
-    unsigned int bucketIndex = h % getNumberOfBuckets();
-    node n(h, iKey, iValue);
+    codingInterview::hash<KEY> hasher;
+    const unsigned int hash = hasher(iKey);
+    const unsigned int bucketIndex = hash % getNumberOfBuckets();
+    
+    node n(hash, iKey, iValue);
     mpBuckets[bucketIndex].push_back(n);
     
     //update begin and end iterator.
@@ -165,6 +256,9 @@ protected:
     //end is one bucket past end
     if( !end().isValid() || currentIt > end() )
     { mEndIt = createIterator(currentIt.getBucketIndex() + 1, 0); }
+    
+    //update size
+    ++mSize;
   }
 
   //------------------------------------------------------------------------------
@@ -172,6 +266,12 @@ protected:
   dynamicArray<typename hashMap<KEY, VALUE>::node>&
   hashMap<KEY, VALUE>::operator[](int iIndex)
   { return mpBuckets[iIndex]; }
+
+  //------------------------------------------------------------------------------
+  template<typename KEY, typename VALUE>
+  unsigned int
+  hashMap<KEY, VALUE>::size() const
+  { return mSize; }
   
   //------------------------------------------------------------------------------
   //--- Implementation hashMap::iterator
@@ -221,6 +321,13 @@ protected:
 
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
+  unsigned int
+  hashMap<KEY, VALUE>::hashMap::iterator::hash() const
+  { return (*mpHashMap)[mBucketIndex][mArrayIndex].mHash; }
+
+  
+  //------------------------------------------------------------------------------
+  template<typename KEY, typename VALUE>
   bool
   hashMap<KEY, VALUE>::hashMap::iterator::isValid() const
   { return mBucketIndex != -1 && mArrayIndex != -1; }
@@ -240,7 +347,7 @@ protected:
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
   bool
-  hashMap<KEY, VALUE>::hashMap::iterator::operator==(const hashMap::iterator &iRhs)
+  hashMap<KEY, VALUE>::hashMap::iterator::operator==(const hashMap::iterator &iRhs) const
   {
     return mBucketIndex == iRhs.mBucketIndex &&
       mArrayIndex == iRhs.mArrayIndex &&
@@ -250,13 +357,13 @@ protected:
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
   bool
-  hashMap<KEY, VALUE>::hashMap::iterator::operator!=(const hashMap::iterator &iRhs)
+  hashMap<KEY, VALUE>::hashMap::iterator::operator!=(const hashMap::iterator &iRhs) const
   { return !operator==(iRhs); }
   
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
   bool
-  hashMap<KEY, VALUE>::hashMap::iterator::operator>(const hashMap::iterator &iRhs)
+  hashMap<KEY, VALUE>::hashMap::iterator::operator>(const hashMap::iterator &iRhs) const
   {
     return mBucketIndex > iRhs.mBucketIndex ||
       (mBucketIndex == iRhs.mBucketIndex && mArrayIndex > iRhs.mArrayIndex);
@@ -265,7 +372,7 @@ protected:
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
   bool
-  hashMap<KEY, VALUE>::hashMap::iterator::operator<(const hashMap::iterator &iRhs)
+  hashMap<KEY, VALUE>::hashMap::iterator::operator<(const hashMap::iterator &iRhs) const
   {
     return mBucketIndex < iRhs.mBucketIndex ||
       (mBucketIndex == iRhs.mBucketIndex && mArrayIndex < iRhs.mArrayIndex);
