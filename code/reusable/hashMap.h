@@ -27,10 +27,10 @@ public:
     unsigned int getArrayIndex() const;
     unsigned int getBucketIndex() const;
     bool isValid() const;
-    bool operator==(const iterator&);
-    bool operator!=(const iterator&);
-    bool operator>(const iterator&);
-    bool operator<(const iterator&);
+    bool operator==(const iterator&) const;
+    bool operator!=(const iterator&) const;
+    bool operator>(const iterator&) const;
+    bool operator<(const iterator&) const;
     iterator& operator++(); //pre-increment
     iterator& operator--(); //pre-decrement
     //iterator operator+(int);
@@ -72,7 +72,7 @@ protected:
   
   hashMap() {;} //no default constructor
   iterator createIterator(unsigned int, unsigned int) const;
-  unsigned int generateHash(const KEY&);
+  unsigned int generateHash(const KEY&) const;
   dynamicArray<node>& operator[](int); //pour iterator;
   
   //--- data
@@ -127,7 +127,7 @@ protected:
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
   unsigned int
-  hashMap<KEY, VALUE>::generateHash(const KEY &iKey)
+  hashMap<KEY, VALUE>::generateHash(const KEY &iKey) const
   {
     // settings taken from
     // http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param
@@ -149,12 +149,37 @@ protected:
   
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
+  typename hashMap<KEY, VALUE>::iterator
+  hashMap<KEY, VALUE>::find(const KEY& iKey) const
+  {
+    iterator it = end();
+    
+    const unsigned int hash = generateHash(iKey);
+    const unsigned int bucketIndex = hash % getNumberOfBuckets();
+    
+    const int bucketSize = mpBuckets[bucketIndex].size();
+    bool found = false;
+    for(int i = 0; i < bucketSize && !found; ++i)
+    {
+      if( mpBuckets[bucketIndex][i].mHash == hash )
+      {
+        it = createIterator(bucketIndex, i);
+        found = true;
+      }
+    }
+    
+    return it;
+  }
+  
+  //------------------------------------------------------------------------------
+  template<typename KEY, typename VALUE>
   void
   hashMap<KEY, VALUE>::insert(const KEY& iKey, const VALUE& iValue)
   {
-    unsigned int h = generateHash(iKey);
-    unsigned int bucketIndex = h % getNumberOfBuckets();
-    node n(h, iKey, iValue);
+    const unsigned int hash = generateHash(iKey);
+    const unsigned int bucketIndex = hash % getNumberOfBuckets();
+    
+    node n(hash, iKey, iValue);
     mpBuckets[bucketIndex].push_back(n);
     
     //update begin and end iterator.
@@ -240,7 +265,7 @@ protected:
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
   bool
-  hashMap<KEY, VALUE>::hashMap::iterator::operator==(const hashMap::iterator &iRhs)
+  hashMap<KEY, VALUE>::hashMap::iterator::operator==(const hashMap::iterator &iRhs) const
   {
     return mBucketIndex == iRhs.mBucketIndex &&
       mArrayIndex == iRhs.mArrayIndex &&
@@ -250,13 +275,13 @@ protected:
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
   bool
-  hashMap<KEY, VALUE>::hashMap::iterator::operator!=(const hashMap::iterator &iRhs)
+  hashMap<KEY, VALUE>::hashMap::iterator::operator!=(const hashMap::iterator &iRhs) const
   { return !operator==(iRhs); }
   
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
   bool
-  hashMap<KEY, VALUE>::hashMap::iterator::operator>(const hashMap::iterator &iRhs)
+  hashMap<KEY, VALUE>::hashMap::iterator::operator>(const hashMap::iterator &iRhs) const
   {
     return mBucketIndex > iRhs.mBucketIndex ||
       (mBucketIndex == iRhs.mBucketIndex && mArrayIndex > iRhs.mArrayIndex);
@@ -265,7 +290,7 @@ protected:
   //------------------------------------------------------------------------------
   template<typename KEY, typename VALUE>
   bool
-  hashMap<KEY, VALUE>::hashMap::iterator::operator<(const hashMap::iterator &iRhs)
+  hashMap<KEY, VALUE>::hashMap::iterator::operator<(const hashMap::iterator &iRhs) const
   {
     return mBucketIndex < iRhs.mBucketIndex ||
       (mBucketIndex == iRhs.mBucketIndex && mArrayIndex < iRhs.mArrayIndex);
