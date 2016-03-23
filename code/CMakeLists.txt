@@ -1,5 +1,3 @@
 
 
-add_subdirectory(linkedList)
-add_subdirectory(dynamicArray)
-add_subdirectory(hashMap)
+add_subdirectory(introduction)
