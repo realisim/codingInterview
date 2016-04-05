@@ -32,7 +32,7 @@ void generateTestData( vector< pair<int, string> >* iData)
   std::uniform_int_distribution<int> charDistribution(34,95);
   
   
-  int n = 1e6;
+  int n = 1e5;
   int key = 0;
   string value = "n/a";
   for(int i = 0; i < n; ++i)
@@ -41,6 +41,32 @@ void generateTestData( vector< pair<int, string> >* iData)
     value = "";
     for(int j = 0; j < 5; ++j)
     {
+      value += (char)charDistribution(generator);
+    }
+    iData->push_back( make_pair(key, value) );
+  }
+}
+
+//------------------------------------------------------------------
+void generateTestData( vector< pair<string, string> >* iData)
+{
+  
+  //generator for characters
+  std::default_random_engine generator;
+  std::uniform_int_distribution<int> charDistribution(34,95);
+  std::uniform_int_distribution<int> numberOfCharacter(10, 20);
+  
+  int n = 5e6;
+  string key = "n/a";
+  string value = "n/a";
+  for(int i = 0; i < n; ++i)
+  {
+    int numChar = numberOfCharacter(generator);
+    key = "";
+    value = "";
+    for(int j = 0; j < numChar; ++j)
+    {
+      key += (char)charDistribution(generator);
       value += (char)charDistribution(generator);
     }
     iData->push_back( make_pair(key, value) );
@@ -280,24 +306,126 @@ void testStringString()
 {
   printf("\n----testStringString\n");
   const int numBuckets = 10000;
+  
+  
+  vector< pair<string, string> > data;
+  generateTestData(&data);
+  
+  timer t;
   hashMap<string, string> hm(numBuckets);
+  //--- HashMap insert time
+  {
+    statistics insertTimeStats;
+    for(int i = 0; i < data.size(); ++i)
+    {
+      t.start();
+      hm.insert(data[i].first, data[i].second);
+      insertTimeStats.add( t.getElapsed() );
+    }
+    printf("HashMap insert time stats:\n%s\n", toString(insertTimeStats).c_str() );
+  }
   
-  hm.insert("key1", "value1");
-  hm.insert("key2", "value2");
-  hm.insert("key3", "value3");
-  hm.insert("key4", "value4");
-  hm.insert("key5", "value5");
+  //--- Hash Mapfind time
+  {
+    statistics findTimeStats;
+    statistics bucketInfoStats;
+    
+    hashMap<string, string>::iterator it;
+    for(int i = 0; i < data.size(); ++i)
+    {
+      t.start();
+      it = hm.find(data[i].first);
+      
+      //wrond data returned!
+      if(data[i].second != it.value())
+      {
+        printf( "searching for key %s, value %s\n"
+               "\tfound key %s, value %s, hash %d\n",
+               data[i].first.c_str(), data[i].second.c_str(),
+               it.key().c_str(), it.value().c_str(), it.hash() );
+        it = hm.find(data[i].first);
+        assert(false);
+      }
+      
+      findTimeStats.add( t.getElapsed() );
+      bucketInfoStats.add( it.getBucketIndex() );
+    }
+    printf("HashMap find time stats:\n%s\n", toString(findTimeStats).c_str() );
+  }
+  hm.clear();
   
-  auto it1 = hm.find("key1");
-  auto it2 = hm.find("key2");
-  auto it3 = hm.find("key3");
-  auto it4 = hm.find("key4");
-  auto it5 = hm.find("key5");
-  print(it1, hm);
-  print(it2, hm);
-  print(it3, hm);
-  print(it4, hm);
-  print(it5, hm);
+  //--- map insert time
+  map<string, string> m;
+  {
+    statistics st;
+    for(int i = 0; i < data.size(); ++i)
+    {
+      t.start();
+      m[data[i].first] = data[i].second;
+      st.add(t.getElapsed());
+    }
+    printf("map insert time stats:\n%s\n", toString(st).c_str() );
+  }
+  
+  //--- map find time
+  {
+    statistics st;
+    map< string, string >::iterator it;
+    for(int i = 0; i < data.size(); ++i)
+    {
+      t.start();
+      it = m.find(data[i].first);
+      
+      if(data[i].second != it->second)
+      {
+        printf( "searching for key %s, value %s\n"
+               "\tfound key %s, value %s\n",
+               data[i].first.c_str(), data[i].second.c_str(),
+               it->first.c_str(), it->second.c_str() );
+        assert(false);
+      }
+      
+      st.add(t.getElapsed());
+    }
+    printf("map find time stats:\n%s\n", toString(st).c_str() );
+  }
+  
+  //--- unordered map insert time
+  unordered_map<string, string> um(numBuckets);
+  {
+    statistics st;
+    for(int i = 0; i < data.size(); ++i)
+    {
+      t.start();
+      um[data[i].first] = data[i].second;
+      st.add(t.getElapsed());
+    }
+    printf("unordered map insert time stats:\n%s\n", toString(st).c_str() );
+  }
+  
+  //--- unordered map find time
+  {
+    statistics st;
+    unordered_map< string, string >::iterator it;
+    for(int i = 0; i < data.size(); ++i)
+    {
+      t.start();
+      it = um.find(data[i].first);
+      
+      if(data[i].second != it->second)
+      {
+        printf( "searching for key %s, value %s\n"
+               "\tfound key %s, value %s\n",
+               data[i].first.c_str(), data[i].second.c_str(),
+               it->first.c_str(), it->second.c_str() );
+        assert(false);
+      }
+      
+      st.add(t.getElapsed());
+    }
+    printf("unordered map find time stats:\n%s\n", toString(st).c_str() );
+  }
+  
 }
 
 //------------------------------------------------------------------
