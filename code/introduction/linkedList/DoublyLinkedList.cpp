@@ -1,6 +1,6 @@
 
 #include <cassert>
-#include "linkedList.h"
+#include "DoubleLinkedList.h"
 #include <sstream>
 
 using namespace codingInterview;

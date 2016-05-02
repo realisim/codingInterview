@@ -1,5 +1,5 @@
 
-#include "linkedList.h"
+#include "doublyLinkedList.h"
 #include <iostream>
 
 using namespace codingInterview;
